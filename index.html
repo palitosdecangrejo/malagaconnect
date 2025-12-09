@@ -3,540 +3,590 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Málaga Connect - Pro Dashboard v4</title>
+    <title>Málaga Connect - v12 Real Time Map</title>
+    
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css" />
 
     <style>
         :root {
-            --primary: #00A676; /* Verde Connect */
-            --primary-dark: #008c63;
-            --secondary: #2C3E50;
-            --bg-light: #f3f4f6;
-            --white: #ffffff;
-            --accent-red: #E74C3C;
-            --text-main: #333;
-            
-            /* Niveles */
-            --lvl-plastic: #95a5a6;
-            --lvl-hybrid: #27ae60;
-            --lvl-electric: #f1c40f;
-            --lvl-hydrogen: #3498db;
+            --primary: #00A676; --primary-dark: #008c63; --secondary: #2C3E50;
+            --bg-light: #f3f4f6; --white: #ffffff; 
+            --neon-red: #ff0055; 
+            --neon-orange: #ff9900; 
+            --neon-green: #00ffaa;
         }
 
-        body {
-            margin: 0;
-            font-family: 'Segoe UI', system-ui, sans-serif;
-            background-color: var(--bg-light);
-            color: var(--text-main);
-            height: 100vh;
-            display: flex;
-            overflow: hidden;
-        }
+        body { margin: 0; font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg-light); height: 100vh; display: flex; overflow: hidden; color: #333; }
 
-        /* --- SIDEBAR --- */
-        .sidebar {
-            width: 260px;
-            background: var(--secondary);
-            color: white;
-            display: flex;
-            flex-direction: column;
-            padding: 20px;
-            box-shadow: 4px 0 15px rgba(0,0,0,0.1);
-            z-index: 1000;
-        }
-
-        .logo {
-            font-size: 1.4rem; font-weight: 700; color: var(--primary);
-            margin-bottom: 40px; display: flex; align-items: center; gap: 10px;
-        }
-        .logo span { color: white; }
-
-        .nav-item {
-            padding: 12px 15px; margin-bottom: 8px; border-radius: 10px;
-            cursor: pointer; transition: 0.2s; display: flex; align-items: center; gap: 12px;
-            color: rgba(255,255,255,0.7);
-        }
+        /* SIDEBAR */
+        .sidebar { width: 260px; background: var(--secondary); color: white; padding: 20px; display: flex; flex-direction: column; z-index: 1000; box-shadow: 4px 0 15px rgba(0,0,0,0.1); }
+        .logo { color: var(--primary); font-size: 1.4rem; font-weight: 700; margin-bottom: 30px; display: flex; align-items: center; gap: 10px; }
+        .nav-item { padding: 12px; margin-bottom: 5px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; gap: 10px; color: rgba(255,255,255,0.7); transition: 0.2s; }
         .nav-item:hover, .nav-item.active { background: rgba(255,255,255,0.1); color: white; }
         .nav-item.active { border-left: 4px solid var(--primary); }
 
-        /* --- MAIN CONTENT --- */
-        .main {
-            flex: 1; padding: 30px; overflow-y: auto; display: flex; flex-direction: column; gap: 20px;
-        }
-
+        /* MAIN */
+        .main { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 20px; }
         .header { display: flex; justify-content: space-between; align-items: center; }
+        .points-badge { background: white; padding: 8px 15px; border-radius: 50px; font-weight: bold; box-shadow: 0 2px 5px rgba(0,0,0,0.05); color: var(--primary-dark); display: flex; align-items: center; gap: 5px;}
+
+        /* VISTAS */
+        .view-section { display: none; height: 100%; }
+        .view-section.active { display: block; animation: fadeIn 0.4s; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        /* DASHBOARD HERO */
+        .hero-card { background: linear-gradient(135deg, var(--secondary), #1a252f); color: white; padding: 25px; border-radius: 15px; display: flex; justify-content: space-between; align-items: center; }
+        .stats-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-top: 20px; }
+        .stat-box { background: white; padding: 20px; border-radius: 12px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+
+        /* PLANIFICADOR */
+        .planner-container { display: grid; grid-template-columns: 350px 1fr; gap: 20px; height: 100%; }
+        .search-panel { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); display: flex; flex-direction: column; gap: 15px; overflow-y: auto; }
+        .input-group input { width: 100%; padding: 10px 10px 10px 35px; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; }
+        .input-group { position: relative; }
+        .input-group i { position: absolute; left: 12px; top: 12px; color: #999; }
+        #map-planner { border-radius: 12px; height: 100%; width: 100%; z-index: 1; }
+
+        /* RESULTADOS RUTA */
+        .trip-card { background: white; border: 1px solid #eee; padding: 15px; border-radius: 8px; cursor: pointer; transition: 0.2s; position: relative; overflow: hidden; }
+        .trip-card:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
+        .trip-card.smart { border: 2px solid var(--primary); background: #f0fdf9; }
+        .trip-card.active-card { background: #e8f8f5; border-left: 5px solid var(--primary); }
         
-        .points-badge {
-            background: white; padding: 8px 16px; border-radius: 50px; font-weight: bold;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.05); display: flex; align-items: center; gap: 8px;
-            color: var(--primary-dark);
-        }
+        .badge { display: inline-block; padding: 3px 8px; border-radius: 4px; color: white; font-size: 0.75rem; font-weight: bold; margin-right: 5px; margin-bottom: 5px; }
+        .bg-metro { background: #e74c3c; } .bg-c1 { background: #2980b9; } .bg-c2 { background: #16a085; } .bg-emt { background: #3498db; } .bg-bike { background: #00A676; } .bg-walk { background: #7f8c8d; }
 
-        /* --- VISTA PLANIFICADOR --- */
-        .planner-layout {
-            display: grid; grid-template-columns: 350px 1fr; gap: 20px; height: 100%;
+        /* ESTILOS MAPA EN TIEMPO REAL */
+        #map-twin { border-radius: 12px; height: 75vh; width: 100%; z-index: 1; border: 1px solid #333; }
+        
+        .twin-legend { 
+            position: absolute; top: 20px; right: 20px; 
+            background: rgba(15, 23, 42, 0.9); 
+            backdrop-filter: blur(5px);
+            color: white; padding: 15px; border-radius: 8px; z-index: 1000; 
+            font-size: 0.85rem; border: 1px solid rgba(255,255,255,0.1);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+        }
+        .legend-row { display: flex; align-items: center; margin-top: 8px; }
+        .legend-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 10px; box-shadow: 0 0 5px currentColor; }
+
+        /* Efecto de Onda de Radar */
+        @keyframes pulse-ring {
+            0% { transform: translate(-50%, -50%) scale(0.5); opacity: 0; }
+            50% { opacity: 0.8; }
+            100% { transform: translate(-50%, -50%) scale(3.5); opacity: 0; }
+        }
+        @keyframes core-pulse {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.1); opacity: 0.8; }
+            100% { transform: scale(1); opacity: 1; }
         }
         
-        .search-box {
-            background: white; padding: 20px; border-radius: 15px;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.05); height: fit-content;
+        .heat-marker-container { position: relative; width: 20px; height: 20px; }
+        .heat-core {
+            width: 12px; height: 12px; border-radius: 50%;
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            z-index: 2; border: 2px solid rgba(255,255,255,0.8);
+            animation: core-pulse 2s infinite ease-in-out;
         }
-        
-        .input-row { position: relative; margin-bottom: 15px; }
-        .input-row i { position: absolute; left: 15px; top: 14px; color: #999; }
-        .input-row input {
-            width: 100%; padding: 12px 12px 12px 40px; border: 1px solid #ddd;
-            border-radius: 8px; font-size: 0.95rem; box-sizing: border-box;
-            background: #f9f9f9; transition: 0.3s;
-        }
-        .input-row input:focus { border-color: var(--primary); background: white; outline: none; }
-
-        /* Mapa Real */
-        #map-planner {
-            height: 600px; width: 100%; border-radius: 15px; z-index: 1;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        .heat-ring {
+            width: 100%; height: 100%; border-radius: 50%;
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            z-index: 1; opacity: 0;
+            animation: pulse-ring 2.5s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
         }
 
-        /* Resultados */
-        .result-card {
-            background: white; padding: 15px; border-radius: 10px; margin-bottom: 10px;
-            cursor: pointer; border: 2px solid transparent; transition: 0.2s;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-        }
-        .result-card:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
-        .result-card.smart { border-color: var(--primary); background: #f0fdf4; }
-        
-        .badges-row { display: flex; gap: 5px; margin: 8px 0; flex-wrap: wrap; }
-        .badge {
-            padding: 3px 8px; border-radius: 4px; font-size: 0.75rem; color: white; font-weight: 600;
-        }
+        .h-red .heat-core { background: var(--neon-red); box-shadow: 0 0 10px var(--neon-red); }
+        .h-red .heat-ring { border: 2px solid var(--neon-red); box-shadow: 0 0 15px var(--neon-red) inset; }
+        .h-orange .heat-core { background: var(--neon-orange); box-shadow: 0 0 10px var(--neon-orange); }
+        .h-orange .heat-ring { border: 2px solid var(--neon-orange); box-shadow: 0 0 15px var(--neon-orange) inset; }
+        .h-green .heat-core { background: var(--neon-green); box-shadow: 0 0 10px var(--neon-green); }
+        .h-green .heat-ring { border: 2px solid var(--neon-green); box-shadow: 0 0 15px var(--neon-green) inset; }
 
-        /* --- VISTA GEMELO DIGITAL --- */
-        #map-twin {
-            height: 70vh; width: 100%; border-radius: 15px; z-index: 1;
-        }
-        .twin-overlay {
-            position: absolute; top: 20px; right: 20px; width: 250px;
-            background: rgba(44, 62, 80, 0.9); color: white; padding: 15px;
-            border-radius: 10px; z-index: 1000; backdrop-filter: blur(5px);
-        }
-
-        /* --- VISTA NIVELES --- */
+        /* NIVELES */
         .levels-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-top: 20px; }
-        .lvl-box {
-            background: white; padding: 20px; border-radius: 15px; text-align: center;
-            opacity: 0.5; transition: 0.3s; border: 2px solid transparent;
-        }
+        .lvl-box { background: white; padding: 20px; border-radius: 15px; text-align: center; opacity: 0.5; border: 2px solid transparent; transition: 0.3s; }
         .lvl-box.current { opacity: 1; border-color: var(--primary); transform: scale(1.05); box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
-        
-        /* Dashboard Hero */
-        .hero-card {
-            background: linear-gradient(135deg, var(--secondary), #1a252f); color: white;
-            padding: 30px; border-radius: 20px; display: flex; align-items: center; justify-content: space-between;
-        }
 
-        /* Utilidades */
-        .hidden { display: none !important; }
-        .btn {
-            background: var(--primary); color: white; border: none; padding: 12px; width: 100%;
-            border-radius: 8px; font-weight: bold; cursor: pointer; margin-top: 10px;
-        }
+        /* UTILS */
+        .btn { width: 100%; padding: 12px; background: var(--primary); color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; transition: 0.3s;}
         .btn:hover { background: var(--primary-dark); }
-        .blink { animation: blinker 1.5s linear infinite; }
-        @keyframes blinker { 50% { opacity: 0; } }
+        .leaflet-routing-container { display: none !important; }
 
+        /* Estilo especial para el botón de confirmar */
+        .btn-confirm { background: var(--secondary); margin-top: 15px; display: none; animation: fadeIn 0.3s;}
+        .btn-confirm:hover { background: #1a252f; transform: scale(1.02); }
     </style>
 </head>
 <body>
 
-    <div class="sidebar">
-        <div class="logo"><i class="fas fa-leaf"></i> <span>Málaga Connect</span></div>
-        <div class="nav-item active" onclick="showView('dash')"><i class="fas fa-tachometer-alt"></i> Panel Principal</div>
-        <div class="nav-item" onclick="showView('plan')"><i class="fas fa-map-signs"></i> Planificador Smart</div>
-        <div class="nav-item" onclick="showView('twin')"><i class="fas fa-city"></i> Gemelo Digital</div>
-        <div class="nav-item" onclick="showView('levels')"><i class="fas fa-medal"></i> Mis Niveles</div>
+<div class="sidebar">
+    <div class="logo"><i class="fas fa-network-wired"></i> Málaga Connect</div>
+    <div class="nav-item active" onclick="switchView('dash')"><i class="fas fa-home"></i> Dashboard</div>
+    <div class="nav-item" onclick="switchView('plan')"><i class="fas fa-map-marked-alt"></i> Planificador Real</div>
+    <div class="nav-item" onclick="switchView('twin')"><i class="fas fa-satellite-dish"></i> Mapa en Tiempo Real</div>
+    <div class="nav-item" onclick="switchView('levels')"><i class="fas fa-trophy"></i> Niveles</div>
+</div>
+
+<div class="main">
+    <div class="header">
+        <h2>Panel de Control</h2>
+        <div class="points-badge"><i class="fas fa-coins"></i> <span id="userPoints">450</span></div>
     </div>
 
-    <div class="main">
-        
-        <div class="header">
+    <div id="view-dash" class="view-section active">
+        <div class="hero-card">
             <div>
-                <h1 style="margin:0;">Dashboard Personal</h1>
-                <p style="margin:5px 0 0; color:#777;">Bienvenido de nuevo, Usuario.</p>
+                <h3>Hola, Usuario</h3>
+                <p>Nivel: <strong style="color: var(--primary);" id="dashLevelName">HÍBRIDO</strong></p>
+                <small id="dashLevelNext">Próximo objetivo: Eléctrico</small>
             </div>
-            <div class="points-badge">
-                <i class="fas fa-coins" style="color: var(--primary); font-size: 1.2rem;"></i>
-                <span id="headerPoints">450</span> pts
-            </div>
-        </div>
-
-        <div id="view-dash">
-            <div class="hero-card">
-                <div>
-                    <span style="background: rgba(255,255,255,0.15); padding: 5px 12px; border-radius: 20px; font-size: 0.8rem;">ESTADO ACTUAL</span>
-                    <h1 id="dashLevelName" style="font-size: 3rem; margin: 10px 0;">HÍBRIDO</h1>
-                    <p id="dashLevelNext" style="opacity: 0.8;">Siguiente: Eléctrico (Faltan 50 pts)</p>
-                </div>
-                <div style="text-align: right;">
-                    <div style="font-size: 4rem; font-weight: bold; color: var(--primary);">450</div>
-                    <div style="font-size: 1rem;">Puntos Totales</div>
-                </div>
-            </div>
-
-            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; margin-top: 20px;">
-                <div class="result-card" style="text-align: center; padding: 30px;">
-                    <i class="fas fa-chart-line" style="font-size: 2rem; color: #3498db; margin-bottom: 10px;"></i>
-                    <h2>12</h2>
-                    <p>Viajes Sostenibles</p>
-                </div>
-                <div class="result-card" style="text-align: center; padding: 30px;">
-                    <i class="fas fa-leaf" style="font-size: 2rem; color: var(--primary); margin-bottom: 10px;"></i>
-                    <h2>8.5 kg</h2>
-                    <p>CO2 Ahorrado</p>
-                </div>
-                <div class="result-card" style="text-align: center; padding: 30px;">
-                    <i class="fas fa-wallet" style="font-size: 2rem; color: #f1c40f; margin-bottom: 10px;"></i>
-                    <h2>24.50€</h2>
-                    <p>Ahorro Estimado</p>
-                </div>
+            <div style="text-align: right;">
+                <div style="font-size: 2.5rem; font-weight: bold;">8.5 kg</div>
+                <div>CO2 Ahorrado</div>
             </div>
         </div>
-
-        <div id="view-plan" class="hidden">
-            <div class="planner-layout">
-                <div style="display: flex; flex-direction: column; gap: 20px;">
-                    <div class="search-box">
-                        <h3><i class="fas fa-search-location"></i> Buscar Ruta</h3>
-                        <div class="input-row">
-                            <i class="fas fa-map-marker-alt" style="color: var(--primary);"></i>
-                            <input type="text" id="originInput" placeholder="Origen (ej: Teatinos, Centro...)" value="Teatinos">
-                        </div>
-                        <div class="input-row">
-                            <i class="fas fa-flag-checkered" style="color: var(--accent-red);"></i>
-                            <input type="text" id="destInput" placeholder="Destino (ej: PTA, Aeropuerto...)">
-                        </div>
-                        <button class="btn" onclick="calculateRoute()">Buscar Rutas</button>
-                    </div>
-
-                    <div id="routeResults" class="hidden">
-                        <p style="font-weight: bold; color: #555;">Mejores opciones encontradas:</p>
-                        
-                        <div class="result-card smart" onclick="selectTrip('smart')">
-                            <div style="display: flex; justify-content: space-between;">
-                                <strong style="color: var(--primary);">SMART TIMING (Salida Flexible)</strong>
-                                <span style="font-weight: bold; color: var(--primary);">GRATIS</span>
-                            </div>
-                            <div class="badges-row" id="smartBadges">
-                                </div>
-                            <small id="smartDesc">Viajas 20 min antes de hora punta.</small>
-                            <div style="margin-top: 8px; color: var(--primary-dark); font-weight: bold;">+50 Monedas Verdes</div>
-                        </div>
-
-                        <div class="result-card" onclick="selectTrip('normal')">
-                            <div style="display: flex; justify-content: space-between;">
-                                <strong>Hora Punta (Ahora)</strong>
-                                <span>2.40€</span>
-                            </div>
-                            <div class="badges-row" id="normalBadges">
-                                </div>
-                            <small style="color: var(--accent-red); font-weight: bold;">
-                                <i class="fas fa-exclamation-triangle"></i> Alta ocupación (117%)
-                            </small>
-                        </div>
-                    </div>
-                </div>
-
-                <div id="map-planner"></div>
+        <div class="stats-row">
+            <div class="stat-box">
+                <i class="fas fa-bus" style="color: #3498db; font-size: 1.5rem;"></i>
+                <h3>12</h3>
+                <p>Viajes EMT</p>
+            </div>
+            <div class="stat-box">
+                <i class="fas fa-subway" style="color: #e74c3c; font-size: 1.5rem;"></i>
+                <h3>5</h3>
+                <p>Viajes Metro</p>
+            </div>
+            <div class="stat-box">
+                <i class="fas fa-bicycle" style="color: var(--primary); font-size: 1.5rem;"></i>
+                <h3>145 km</h3>
+                <p>En Green Wheel</p>
             </div>
         </div>
-
-        <div id="view-twin" class="hidden">
-            <div style="position: relative; height: 100%;">
-                <div id="map-twin"></div>
-                
-                <div class="twin-overlay">
-                    <h3 style="margin-top: 0; color: var(--primary);">Málaga Digital Twin</h3>
-                    <div style="margin-bottom: 10px;">
-                        <span class="blink" style="color: #e74c3c; margin-right: 5px;">●</span> Tráfico Elevado (A-7)
-                    </div>
-                    <div style="margin-bottom: 10px;">
-                        <span style="color: #2ecc71; margin-right: 5px;">●</span> E-Bikes Disponibles: 85%
-                    </div>
-                    <hr style="border-color: rgba(255,255,255,0.2);">
-                    <small>Datos en tiempo real agregados de sensores IoT y validaciones de usuarios.</small>
-                </div>
-            </div>
-        </div>
-
-        <div id="view-levels" class="hidden">
-            <div class="hero-card" style="background: linear-gradient(to right, #00A676, #008c63);">
-                <div style="width: 100%;">
-                    <h2>Tu Progreso</h2>
-                    <p>Consigue monedas verdes para desbloquear descuentos.</p>
-                    <div style="background: rgba(0,0,0,0.3); height: 20px; border-radius: 10px; margin-top: 15px; position: relative;">
-                        <div id="levelProgressBar" style="background: #f1c40f; height: 100%; width: 45%; border-radius: 10px; transition: width 1s;"></div>
-                    </div>
-                    <div style="text-align: right; margin-top: 5px; font-size: 0.9rem;" id="pointsTextBar">450 / 500 pts</div>
-                </div>
-            </div>
-
-            <div class="levels-grid">
-                <div class="lvl-box" id="lvl-PLÁSTICO">
-                    <i class="fas fa-recycle" style="font-size: 2rem; color: #95a5a6;"></i>
-                    <h3>PLÁSTICO</h3>
-                    <small>0 - 499</small>
-                </div>
-                <div class="lvl-box" id="lvl-HÍBRIDO">
-                    <i class="fas fa-leaf" style="font-size: 2rem; color: #27ae60;"></i>
-                    <h3>HÍBRIDO</h3>
-                    <small>500 - 999</small>
-                </div>
-                <div class="lvl-box" id="lvl-ELÉCTRICO">
-                    <i class="fas fa-bolt" style="font-size: 2rem; color: #f1c40f;"></i>
-                    <h3>ELÉCTRICO</h3>
-                    <small>1000 - 2499</small>
-                </div>
-                <div class="lvl-box" id="lvl-HIDRÓGENO">
-                    <i class="fas fa-water" style="font-size: 2rem; color: #3498db;"></i>
-                    <h3>HIDRÓGENO</h3>
-                    <small>2500+</small>
-                </div>
-            </div>
-        </div>
-
     </div>
 
-    <script>
-        // --- CONFIGURACIÓN GLOBAL ---
-        let userPoints = 450;
-        let mapP, mapT; // Variables para mapas
-        let routeLayer; // Capa para dibujar rutas
+    <div id="view-plan" class="view-section">
+        <div class="planner-container">
+            <div class="search-panel">
+                <h3><i class="fas fa-route"></i> Nueva Ruta</h3>
+                <div class="input-group">
+                    <i class="fas fa-map-marker-alt"></i>
+                    <input type="text" id="origin" placeholder="Origen (ej: Teatinos)" value="Teatinos">
+                </div>
+                <div class="input-group">
+                    <i class="fas fa-flag-checkered"></i>
+                    <input type="text" id="dest" placeholder="Destino (ej: Centro)" value="Centro">
+                </div>
+                <button class="btn" onclick="startSearch()">Buscar Ruta</button>
 
-        // Coordenadas "Hardcoded" para la simulación inteligente
-        const locations = {
-            "centro": [36.7213, -4.4214],
-            "calle larios": [36.7213, -4.4214],
-            "teatinos": [36.7176, -4.4750],
-            "universidad": [36.7176, -4.4750],
-            "pta": [36.7366, -4.5539],
-            "parque tecnologico": [36.7366, -4.5539],
-            "aeropuerto": [36.6749, -4.4991],
-            "torremolinos": [36.6243, -4.4996],
-            "marbella": [36.5101, -4.8824],
-            "rincon": [36.7158, -4.2773]
-        };
+                <div id="results-area" style="display:none; margin-top: 15px;">
+                    <div style="font-size: 0.8rem; color: #666; margin-bottom: 10px;" id="route-meta"></div>
 
-        // Niveles
-        const levels = [
-            { name: "PLÁSTICO", min: 0, color: "#95a5a6" },
-            { name: "HÍBRIDO", min: 500, color: "#27ae60" },
-            { name: "ELÉCTRICO", min: 1000, color: "#f1c40f" },
-            { name: "HIDRÓGENO", min: 2500, color: "#3498db" }
+                    <p style="font-size:0.75rem; color:#888; text-align:center;">Haz clic en una tarjeta para ver su ruta en el mapa</p>
+
+                    <div id="card-smart" class="trip-card smart" onclick="drawSelectedRoute('smart')">
+                        <div style="display:flex; justify-content:space-between;">
+                            <strong style="color: var(--primary);">SMART (20m antes)</strong>
+                            <strong style="color: var(--primary);">GRATIS</strong>
+                        </div>
+                        <div style="font-size: 0.9rem; margin: 5px 0;">
+                            ETA: <span id="eta-smart" style="font-weight:bold;">08:45</span>
+                        </div>
+                        <div id="badges-smart"></div>
+                    </div>
+
+                    <div id="card-normal" class="trip-card" onclick="drawSelectedRoute('normal')" style="margin-top: 10px;">
+                        <div style="display:flex; justify-content:space-between;">
+                            <strong>Hora Punta (Coche)</strong>
+                            <span>1.80€</span>
+                        </div>
+                        <div style="font-size: 0.9rem; margin: 5px 0;">
+                            ETA: <span id="eta-normal" style="font-weight:bold;">09:15</span> 
+                            <span style="color: var(--neon-red); font-size: 0.7rem;">(+15min tráfico)</span>
+                        </div>
+                        <div id="badges-normal"></div>
+                    </div>
+
+                    <button id="btn-confirm-route" class="btn btn-confirm" onclick="confirmRoute()">
+                        Confirmar Selección
+                    </button>
+
+                </div>
+            </div>
+            <div id="map-planner"></div>
+        </div>
+    </div>
+
+    <div id="view-twin" class="view-section">
+        <div style="position: relative;">
+            <div id="map-twin"></div>
+            <div class="twin-legend">
+                <strong style="text-transform: uppercase; letter-spacing: 1px; font-size: 0.8rem; color: #aaa;">MONITORIZACIÓN</strong>
+                <h4 style="margin: 5px 0 10px 0;">Mapa en Tiempo Real</h4>
+                
+                <div class="legend-row">
+                    <span class="legend-dot" style="background:var(--neon-red);"></span> 
+                    <span>Congestión Alta</span>
+                </div>
+                <div class="legend-row">
+                    <span class="legend-dot" style="background:var(--neon-orange);"></span> 
+                    <span>Tráfico Denso</span>
+                </div>
+                <div class="legend-row">
+                    <span class="legend-dot" style="background:var(--neon-green);"></span> 
+                    <span>Zona Eco / Fluida</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="view-levels" class="view-section">
+        <div class="hero-card" style="background: linear-gradient(to right, #00A676, #008c63);">
+            <div style="width: 100%;">
+                <h3>Gamificación</h3>
+                <p>Acumula puntos para descuentos reales.</p>
+                <div style="background: rgba(0,0,0,0.3); height: 20px; border-radius: 10px; margin-top: 15px; position: relative;">
+                    <div id="levelProgressBar" style="background: #f1c40f; height: 100%; width: 45%; border-radius: 10px; transition: width 0.5s;"></div>
+                </div>
+                <div style="text-align: right; margin-top: 5px; font-size: 0.9rem;" id="pointsTextBar">450 / 500 pts</div>
+            </div>
+        </div>
+        <div class="levels-grid">
+            <div class="lvl-box" id="lvl-PLÁSTICO">
+                <i class="fas fa-recycle" style="font-size: 2rem; color: #95a5a6;"></i>
+                <h3>PLÁSTICO</h3>
+                <small>0 - 499 pts</small>
+                <p style="font-size: 0.8rem;">Acceso App</p>
+            </div>
+            <div class="lvl-box" id="lvl-HÍBRIDO">
+                <i class="fas fa-leaf" style="font-size: 2rem; color: #27ae60;"></i>
+                <h3>HÍBRIDO</h3>
+                <small>500 - 999 pts</small>
+                <p style="font-size: 0.8rem;">Viaje a Crédito</p>
+            </div>
+            <div class="lvl-box" id="lvl-ELÉCTRICO">
+                <i class="fas fa-bolt" style="font-size: 2rem; color: #f1c40f;"></i>
+                <h3>ELÉCTRICO</h3>
+                <small>1000 - 2499 pts</small>
+                <p style="font-size: 0.8rem;">Prioridad E-Bikes</p>
+            </div>
+            <div class="lvl-box" id="lvl-HIDRÓGENO">
+                <i class="fas fa-water" style="font-size: 2rem; color: #3498db;"></i>
+                <h3>HIDRÓGENO</h3>
+                <small>2500+ pts</small>
+                <p style="font-size: 0.8rem;">Asiento Asegurado</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
+
+<script>
+    const transportData = {
+        "emt": {
+            "lines": {
+                "1": { "name": "L1 Parque Sur - San Andrés", "stops": [{"lat":36.720,"lon":-4.420}, {"lat":36.721,"lon":-4.417}, {"lat":36.711,"lon":-4.431}] },
+                "11": { "name": "L11 Universidad", "stops": [{"lat":36.721,"lon":-4.417}, {"lat":36.717,"lon":-4.475}, {"lat":36.718,"lon":-4.450}] },
+                "25": { "name": "L25 Campanillas (PTA)", "stops": [{"lat":36.721,"lon":-4.417}, {"lat":36.715,"lon":-4.460}, {"lat":36.736,"lon":-4.553}] }
+            }
+        },
+        "metro": {
+            "lines": {
+                "L1": { "name":"Metro L1 (Andalucía Tech)", "stops":[{"lat":36.742,"lon":-4.520}, {"lat":36.718,"lon":-4.475}, {"lat":36.711,"lon":-4.432}, {"lat":36.718,"lon":-4.423}] }
+            }
+        },
+        "cercanias": {
+            "lines": {
+                "C1": { "name":"C1 Fuengirola", "stops":[{"lat":36.717,"lon":-4.424}, {"lat":36.711,"lon":-4.431}, {"lat":36.675,"lon":-4.489}, {"lat":36.623,"lon":-4.500}] },
+                "C2": { "name":"C2 Álora", "stops":[{"lat":36.717,"lon":-4.424}, {"lat":36.732,"lon":-4.563}, {"lat":36.748,"lon":-4.616}] }
+            }
+        }
+    };
+
+    const placeFix = {
+        "pta": {lat: 36.7366, lon: -4.5539}, "parque tecnologico": {lat: 36.7366, lon: -4.5539},
+        "teatinos": {lat: 36.7176, lon: -4.4750}, "vialia": {lat: 36.7110, lon: -4.4319},
+        "centro": {lat: 36.7213, lon: -4.4214}, "aeropuerto": {lat: 36.6749, lon: -4.4991},
+        "campanillas": {lat: 36.732, lon: -4.563}
+    };
+
+    let mapP, mapT, routeControl;
+    let userPoints = 450;
+    let currentStart = null;
+    let currentEnd = null;
+    
+    // Variable para guardar qué ruta ha seleccionado el usuario
+    let currentRouteType = null; 
+
+    const levels = [
+        {name: "PLÁSTICO", min: 0, next: 500},
+        {name: "HÍBRIDO", min: 500, next: 1000},
+        {name: "ELÉCTRICO", min: 1000, next: 2500},
+        {name: "HIDRÓGENO", min: 2500, next: 10000}
+    ];
+
+    window.onload = function() {
+        mapP = L.map('map-planner').setView([36.72, -4.42], 12);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {attribution: 'OSM'}).addTo(mapP);
+
+        mapT = L.map('map-twin', {zoomControl: false}).setView([36.72, -4.42], 12);
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+            attribution: '©OpenStreetMap, ©CartoDB',
+            subdomains: 'abcd',
+            maxZoom: 19
+        }).addTo(mapT);
+        
+        loadDigitalTwin();
+        updateUI();
+    };
+
+    function loadDigitalTwin() {
+        const heatData = [
+            {lat: 36.7213, lon: -4.4214, type: 'h-red'}, 
+            {lat: 36.7110, lon: -4.4319, type: 'h-red'}, 
+            {lat: 36.7160, lon: -4.4100, type: 'h-red'}, 
+
+            {lat: 36.7176, lon: -4.4750, type: 'h-orange'}, 
+            {lat: 36.6900, lon: -4.4450, type: 'h-orange'}, 
+            {lat: 36.7350, lon: -4.4200, type: 'h-orange'}, 
+
+            {lat: 36.7366, lon: -4.5539, type: 'h-green'}, 
+            {lat: 36.7220, lon: -4.3800, type: 'h-green'}, 
+            {lat: 36.7500, lon: -4.4000, type: 'h-green'}  
         ];
 
-        // --- INICIALIZACIÓN ---
-        window.onload = function() {
-            initMaps();
-            updateUI();
-        };
-
-        function initMaps() {
-            // Mapa Planificador (Centrado en Málaga)
-            mapP = L.map('map-planner').setView([36.7213, -4.4214], 13);
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: '© OpenStreetMap'
-            }).addTo(mapP);
-
-            // Mapa Gemelo Digital (Estilo Oscuro simulado con filtro CSS si quisieramos, pero usaremos el standard limpio)
-            mapT = L.map('map-twin').setView([36.7213, -4.4214], 14);
-            L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-                attribution: '© CARTO'
-            }).addTo(mapT);
-
-            // Simular Datos Gemelo Digital (Círculos de calor)
-            L.circle([36.72, -4.42], {color: 'red', fillColor: '#f03', fillOpacity: 0.5, radius: 500}).addTo(mapT); // Centro saturado
-            L.circle([36.718, -4.48], {color: 'green', fillColor: '#2ecc71', fillOpacity: 0.5, radius: 400}).addTo(mapT); // Teatinos libre
-            L.circle([36.675, -4.499], {color: 'orange', fillColor: '#f39c12', fillOpacity: 0.5, radius: 600}).addTo(mapT); // Aeropuerto
-        }
-
-        // --- NAVEGACIÓN ---
-        function showView(viewId) {
-            // Ocultar vistas
-            ['dash', 'plan', 'twin', 'levels'].forEach(v => document.getElementById('view-'+v).classList.add('hidden'));
-            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-            
-            // Mostrar vista
-            document.getElementById('view-'+viewId).classList.remove('hidden');
-            
-            // Highlight menú (simple)
-            const menuIdx = {'dash':0, 'plan':1, 'twin':2, 'levels':3};
-            document.querySelectorAll('.nav-item')[menuIdx[viewId]].classList.add('active');
-
-            // TRUCO IMPORTANTE: Recalcular tamaño de mapa al mostrar (si no se ve gris)
-            setTimeout(() => {
-                if(viewId === 'plan') mapP.invalidateSize();
-                if(viewId === 'twin') mapT.invalidateSize();
-            }, 100);
-        }
-
-        // --- LÓGICA PLANIFICADOR INTELIGENTE ---
-        function calculateRoute() {
-            // 1. Obtener texto usuario
-            const originTxt = document.getElementById('originInput').value.toLowerCase();
-            const destTxt = document.getElementById('destInput').value.toLowerCase();
-
-            // 2. Buscar coordenadas (Simulación de Geocoding)
-            // Si no encuentra la ciudad en mi lista, usa un punto aleatorio cerca de Málaga
-            let p1 = findCoord(originTxt) || [36.72 + (Math.random()*0.05), -4.42 - (Math.random()*0.05)];
-            let p2 = findCoord(destTxt) || [36.72 - (Math.random()*0.05), -4.42 + (Math.random()*0.05)];
-
-            // 3. Limpiar mapa anterior
-            if(routeLayer) mapP.removeLayer(routeLayer);
-            document.getElementById('routeResults').classList.add('hidden');
-
-            // 4. Simular carga
-            const btn = document.querySelector('#view-plan .btn');
-            const originalText = btn.innerText;
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Analizando Tráfico...';
-
-            setTimeout(() => {
-                btn.innerText = originalText;
-                
-                // 5. Dibujar ruta (Línea simple)
-                routeLayer = L.polyline([p1, p2], {color: 'blue', weight: 4, opacity: 0.7}).addTo(mapP);
-                // Añadir marcadores
-                L.marker(p1).addTo(mapP).bindPopup("Origen: " + document.getElementById('originInput').value).openPopup();
-                L.marker(p2).addTo(mapP).bindPopup("Destino: " + document.getElementById('destInput').value);
-                
-                // Ajustar zoom para ver toda la ruta
-                mapP.fitBounds(routeLayer.getBounds(), {padding: [50, 50]});
-
-                // 6. Generar Tarjetas de Transporte Dinámicas según distancia/destino
-                generateDynamicTransport(destTxt);
-
-                document.getElementById('routeResults').classList.remove('hidden');
-            }, 1000);
-        }
-
-        function findCoord(text) {
-            for (let key in locations) {
-                if (text.includes(key)) return locations[key];
-            }
-            return null;
-        }
-
-        function generateDynamicTransport(destText) {
-            const smartContainer = document.getElementById('smartBadges');
-            const normalContainer = document.getElementById('normalBadges');
-            smartContainer.innerHTML = '';
-            normalContainer.innerHTML = '';
-
-            // Lógica "Fake" pero realista:
-            // Si vamos al PTA -> Bus o Metro. Si vamos a Torremolinos -> Tren.
-            
-            let badgesSmart = [];
-            let badgesNormal = [];
-
-            if(destText.includes('torremolinos') || destText.includes('aeropuerto') || destText.includes('centro')) {
-                // Ruta de Cercanías
-                badgesSmart = [
-                    {icon: 'bicycle', color: '#00A676', text: 'E-Bike'},
-                    {icon: 'train', color: '#8e44ad', text: 'Tren C-1'}
-                ];
-                badgesNormal = [
-                    {icon: 'car', color: '#7f8c8d', text: 'Uber/Taxi'},
-                    {icon: 'train', color: '#8e44ad', text: 'Tren C-1'}
-                ];
-            } else if (destText.includes('pta') || destText.includes('teatinos')) {
-                // Ruta Metro/Bus
-                badgesSmart = [
-                    {icon: 'walking', color: '#95a5a6', text: '5 min'},
-                    {icon: 'bus', color: '#2980b9', text: 'Bus 25 Exprés'}
-                ];
-                badgesNormal = [
-                    {icon: 'car', color: '#e74c3c', text: 'Coche'},
-                    {icon: 'parking', color: '#c0392b', text: 'Parking Lleno'}
-                ];
-            } else {
-                // Genérico
-                badgesSmart = [
-                    {icon: 'bicycle', color: '#00A676', text: 'Green Wheel'},
-                    {icon: 'subway', color: '#e74c3c', text: 'Metro L1'}
-                ];
-                badgesNormal = [
-                    {icon: 'bus', color: '#2980b9', text: 'Bus Regular'},
-                    {icon: 'subway', color: '#e74c3c', text: 'Metro L1'}
-                ];
-            }
-
-            // Renderizar HTML
-            renderBadges(badgesSmart, smartContainer);
-            renderBadges(badgesNormal, normalContainer);
-        }
-
-        function renderBadges(list, container) {
-            list.forEach(item => {
-                const span = document.createElement('span');
-                span.className = 'badge';
-                span.style.backgroundColor = item.color;
-                span.innerHTML = `<i class="fas fa-${item.icon}"></i> ${item.text}`;
-                container.appendChild(span);
+        heatData.forEach(p => {
+            const html = `
+                <div class="heat-marker-container ${p.type}">
+                    <div class="heat-ring"></div>
+                    <div class="heat-core"></div>
+                </div>
+            `;
+            const icon = L.divIcon({
+                className: '', 
+                html: html,
+                iconSize: [20, 20],
+                iconAnchor: [10, 10]
             });
+            L.marker([p.lat, p.lon], {icon: icon}).addTo(mapT);
+        });
+    }
+
+    async function startSearch() {
+        const startTxt = document.getElementById('origin').value;
+        const endTxt = document.getElementById('dest').value;
+        const btn = document.querySelector('#view-plan .btn');
+
+        if(!startTxt || !endTxt) return;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Consultando Red...';
+        document.getElementById('results-area').style.display = 'none';
+        
+        // Ocultamos botón de confirmar al iniciar nueva búsqueda
+        document.getElementById('btn-confirm-route').style.display = 'none';
+
+        const p1 = await resolveLoc(startTxt);
+        const p2 = await resolveLoc(endTxt);
+
+        if(!p1 || !p2) { alert("Ubicación no encontrada."); btn.innerText = "Buscar Ruta"; return; }
+
+        currentStart = p1;
+        currentEnd = p2;
+
+        fetchRouteData(p1, p2, 'cycling', (summary) => {
+            processLogic(p1, p2, summary.totalDistance, summary.totalTime);
+            drawSelectedRoute('smart');
+            btn.innerText = "Buscar Ruta";
+        });
+    }
+
+    async function resolveLoc(query) {
+        const q = query.toLowerCase();
+        for(let k in placeFix) if(q.includes(k)) return placeFix[k];
+        try {
+            const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query+", Málaga, España")}&limit=1`);
+            const d = await res.json();
+            return d[0] ? {lat: parseFloat(d[0].lat), lon: parseFloat(d[0].lon)} : null;
+        } catch(e){return null;}
+    }
+
+    function fetchRouteData(p1, p2, profile, callback) {
+        const url = `https://router.project-osrm.org/route/v1/${profile}/${p1.lon},${p1.lat};${p2.lon},${p2.lat}?overview=false`;
+        fetch(url).then(r=>r.json()).then(data => {
+            if(data.routes && data.routes.length > 0) {
+                callback({totalDistance: data.routes[0].distance, totalTime: data.routes[0].duration});
+            }
+        });
+    }
+
+    function drawSelectedRoute(type) {
+        if(!currentStart || !currentEnd) return;
+
+        if(routeControl) mapP.removeControl(routeControl);
+        
+        // Guardamos el tipo seleccionado en la variable global
+        currentRouteType = type;
+
+        let profile = 'driving';
+        let lineColor = '#7f8c8d';
+        let lineWeight = 6;
+
+        const confirmBtn = document.getElementById('btn-confirm-route');
+        confirmBtn.style.display = 'block'; // Mostrar botón
+
+        if (type === 'smart') {
+            profile = 'cycling';
+            lineColor = '#00A676';
+            document.getElementById('card-smart').classList.add('active-card');
+            document.getElementById('card-normal').classList.remove('active-card');
+            
+            // Actualizar Texto del Botón para Smart
+            confirmBtn.innerHTML = '<i class="fas fa-check-circle"></i> Iniciar Ruta Sostenible (+50 pts)';
+            confirmBtn.style.background = 'var(--primary)';
+        } else {
+            lineColor = '#E74C3C';
+            document.getElementById('card-smart').classList.remove('active-card');
+            document.getElementById('card-normal').classList.add('active-card');
+
+            // Actualizar Texto del Botón para Normal
+            confirmBtn.innerHTML = 'Iniciar Ruta Estándar (0 pts)';
+            confirmBtn.style.background = 'var(--secondary)';
         }
 
-        // --- GAMIFICACIÓN ---
-        function selectTrip(type) {
-            if(type === 'smart') {
-                userPoints += 50;
-                alert("¡Ruta Smart Confirmada! \n\nHas ganado +50 Monedas Verdes.");
-            } else {
-                alert("Ruta Estándar seleccionada.");
+        routeControl = L.Routing.control({
+            waypoints: [L.latLng(currentStart.lat, currentStart.lon), L.latLng(currentEnd.lat, currentEnd.lon)],
+            router: L.Routing.osrmv1({
+                serviceUrl: `https://router.project-osrm.org/route/v1`,
+                profile: profile
+            }),
+            show: false,
+            lineOptions: {
+                styles: [{color: lineColor, opacity: 0.8, weight: lineWeight}]
+            },
+            createMarker: function(i, wp) { 
+                return L.marker(wp.latLng, {draggable: false}); 
             }
-            updateUI();
+        }).addTo(mapP);
+    }
+
+    // --- NUEVA FUNCIÓN: CONFIRMAR RUTA Y DAR PUNTOS ---
+    function confirmRoute() {
+        if (!currentRouteType) return;
+
+        if (currentRouteType === 'smart') {
+            userPoints += 50;
+            alert("¡Genial! Has elegido la opción sostenible. +50 Puntos añadidos a tu perfil.");
+        } else {
+            alert("Ruta iniciada. Recuerda: Si eliges opciones sostenibles ganarás puntos para descuentos.");
         }
 
-        function updateUI() {
-            // 1. Detectar Nivel
-            let currentLvl = levels[0];
-            let nextLvl = levels[1];
+        // Actualizar la interfaz con los nuevos puntos
+        updateUI();
+        
+        // Resetear visualmente para simular que ha empezado el viaje
+        document.getElementById('results-area').style.display = 'none';
+        
+        // Pequeño hack para forzar redibujado de la barra de progreso
+        setTimeout(() => switchView('levels'), 500);
+    }
 
-            for(let i=0; i<levels.length; i++) {
-                if(userPoints >= levels[i].min) {
-                    currentLvl = levels[i];
-                    nextLvl = levels[i+1] || null;
-                }
-            }
+    function processLogic(p1, p2, dist, time) {
+        document.getElementById('results-area').style.display = 'block';
+        
+        const timeMin = Math.round(time / 60);
+        
+        const now = new Date();
+        const etaSmart = new Date(now.getTime() - 20*60000 + (time*1000) + 300000); 
+        const etaNormal = new Date(now.getTime() + (time*1000) - (time*0.3*1000) + 1200000);
 
-            // 2. Actualizar Textos
-            document.getElementById('headerPoints').innerText = userPoints;
-            document.getElementById('dashLevelName').innerText = currentLvl.name;
-            document.getElementById('dashLevelName').style.color = currentLvl.color;
+        const fmt = d => d.getHours().toString().padStart(2,'0') + ":" + d.getMinutes().toString().padStart(2,'0');
+        document.getElementById('eta-smart').innerText = fmt(etaSmart);
+        document.getElementById('eta-normal').innerText = fmt(etaNormal);
+        document.getElementById('route-meta').innerText = `Distancia aprox: ${(dist/1000).toFixed(1)} km`;
 
-            // 3. Actualizar Barra
-            if(nextLvl) {
-                const range = nextLvl.min - currentLvl.min;
-                const progress = userPoints - currentLvl.min;
-                const pct = (progress / range) * 100;
-                
-                document.getElementById('levelProgressBar').style.width = pct + "%";
-                document.getElementById('levelProgressBar').style.background = nextLvl.color;
-                document.getElementById('dashLevelNext').innerText = `Siguiente: ${nextLvl.name} (Faltan ${nextLvl.min - userPoints} pts)`;
-                document.getElementById('pointsTextBar').innerText = `${userPoints} / ${nextLvl.min} pts`;
-            } else {
-                document.getElementById('levelProgressBar').style.width = "100%";
-                document.getElementById('dashLevelNext').innerText = "¡Nivel Máximo Alcanzado!";
-            }
+        let mode = "GENERIC";
+        if (checkLine(p1, p2, transportData.cercanias.lines.C1)) mode = "C1";
+        else if (checkLine(p1, p2, transportData.cercanias.lines.C2)) mode = "C2";
+        else if (checkLine(p1, p2, transportData.metro.lines.L1)) mode = "METRO";
+        else if (checkLine(p1, p2, transportData.emt.lines["25"])) mode = "EMT25"; 
+        else if (checkLine(p1, p2, transportData.emt.lines["11"])) mode = "EMT11"; 
 
-            // 4. Highlight tarjeta nivel
-            document.querySelectorAll('.lvl-box').forEach(b => b.classList.remove('current'));
-            const activeBox = document.getElementById('lvl-'+currentLvl.name);
-            if(activeBox) {
-                activeBox.classList.add('current');
-                activeBox.style.borderColor = currentLvl.color;
-            }
+        renderBadges(mode);
+    }
+
+    function checkLine(p1, p2, line) {
+        let n1=false, n2=false;
+        line.stops.forEach(s => {
+            if(getDist(p1, s) < 2) n1 = true; 
+            if(getDist(p2, s) < 2) n2 = true;
+        });
+        return n1 && n2;
+    }
+
+    function getDist(p1, p2) {
+        const R = 6371; 
+        const dLat = (p2.lat-p1.lat)*Math.PI/180;
+        const dLon = (p2.lon-p1.lon)*Math.PI/180; 
+        const a = Math.sin(dLat/2)**2 + Math.cos(p1.lat*Math.PI/180)*Math.cos(p2.lat*Math.PI/180)*Math.sin(dLon/2)**2;
+        return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    }
+
+    function renderBadges(mode) {
+        const s = document.getElementById('badges-smart');
+        const n = document.getElementById('badges-normal');
+        s.innerHTML = ''; n.innerHTML = '';
+
+        if(mode === "C1") {
+            addB(s, 'bicycle', 'bg-bike', 'E-Bike'); addB(s, 'train', 'bg-c1', 'Cercanías C1');
+            addB(n, 'car', 'bg-walk', 'Taxi'); addB(n, 'train', 'bg-c1', 'C1 (Lleno)');
+        } else if(mode === "METRO") {
+            addB(s, 'walking', 'bg-walk', '5 min'); addB(s, 'subway', 'bg-metro', 'Metro L1');
+            addB(n, 'bus', 'bg-emt', 'Bus EMT'); addB(n, 'subway', 'bg-metro', 'Metro L1');
+        } else if(mode === "EMT25" || mode === "C2") { // PTA
+            addB(s, 'subway', 'bg-metro', 'Metro L1'); addB(s, 'bus', 'bg-emt', 'Lanzadera 25');
+            addB(n, 'car', 'bg-walk', 'Coche'); addB(n, 'bus', 'bg-emt', 'Bus 25 (Lleno)');
+        } else {
+            addB(s, 'bicycle', 'bg-bike', 'Green Wheel'); addB(s, 'bus', 'bg-emt', 'Bus EMT');
+            addB(n, 'car', 'bg-walk', 'Coche (Atasco)');
         }
-    </script>
+    }
+
+    function addB(div, icon, bg, txt) {
+        div.innerHTML += `<span class="badge ${bg}"><i class="fas fa-${icon}"></i> ${txt}</span>`;
+    }
+
+    function updateUI() {
+        let cur = levels[0];
+        let next = levels[1];
+        for(let l of levels) if(userPoints >= l.min) cur = l;
+        next = levels[levels.indexOf(cur) + 1];
+
+        document.getElementById('userPoints').innerText = userPoints;
+        document.getElementById('dashLevelName').innerText = cur.name;
+        if(next) document.getElementById('dashLevelNext').innerText = `Siguiente: ${next.name} (-${next.min - userPoints} pts)`;
+        else document.getElementById('dashLevelNext').innerText = "Nivel Máximo";
+
+        const pct = next ? ((userPoints/next.min)*100) : 100;
+        document.getElementById('levelProgressBar').style.width = pct + "%";
+        document.getElementById('pointsTextBar').innerText = `${userPoints} / ${next ? next.min : 'MAX'} pts`;
+
+        document.querySelectorAll('.lvl-box').forEach(b => b.classList.remove('current'));
+        const box = document.getElementById('lvl-'+cur.name);
+        if(box) box.classList.add('current');
+    }
+
+    function switchView(id) {
+        document.querySelectorAll('.view-section').forEach(e => e.classList.remove('active'));
+        document.getElementById('view-'+id).classList.add('active');
+        document.querySelectorAll('.nav-item').forEach(e => e.classList.remove('active'));
+        event.currentTarget.classList.add('active');
+        setTimeout(() => { mapP.invalidateSize(); mapT.invalidateSize(); }, 100);
+    }
+</script>
+
 </body>
 </html>
